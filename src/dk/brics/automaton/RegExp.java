@@ -42,13 +42,15 @@ import java.util.Set;
  * Regular expressions are built from the following abstract syntax:
  * <table border="0">
  * <tr><td><i>regexp</i></td><td>::=</td><td><i>unionexp</i></td><td></td><td></td></tr>
- * <tr><td></td><td>|</td><td></td><td></td><td></td></tr>
  *
  * <tr><td><i>unionexp</i></td><td>::=</td><td><i>interexp</i>&nbsp;<code><b>|</b></code>&nbsp;<i>unionexp</i></td><td>(union)</td><td></td></tr>
  * <tr><td></td><td>|</td><td><i>interexp</i></td><td></td><td></td></tr>
  *
- * <tr><td><i>interexp</i></td><td>::=</td><td><i>concatexp</i>&nbsp;<code><b>&amp;</b></code>&nbsp;<i>interexp</i></td><td>(intersection)</td><td><small>[OPTIONAL]</small></td></tr>
- * <tr><td></td><td>|</td><td><i>concatexp</i></td><td></td><td></td></tr>
+ * <tr><td><i>interexp</i></td><td>::=</td><td><i>optionalexp</i>&nbsp;<code><b>&amp;</b></code>&nbsp;<i>interexp</i></td><td>(intersection)</td><td><small>[OPTIONAL]</small></td></tr>
+ * <tr><td></td><td>|</td><td><i>optionalexp</i></td><td></td><td></td></tr>
+ *
+ * <tr><td><i>optionalexp</i></td><td>::=</td><td><i>concatexp</i></td><td></td><td></td></tr>
+ * <tr><td></td><td>|</td><td></td><td></td><td></td></tr>
  *
  * <tr><td><i>concatexp</i></td><td>::=</td><td><i>repeatexp</i>&nbsp;<i>concatexp</i></td><td>(concatenation)</td><td></td></tr>
  * <tr><td></td><td>|</td><td><i>repeatexp</i></td><td></td><td></td></tr>
@@ -79,7 +81,6 @@ import java.util.Set;
  * <tr><td></td><td>|</td><td><code><b>#</b></code></td><td>(the empty language)</td><td><small>[OPTIONAL]</small></td></tr>
  * <tr><td></td><td>|</td><td><code><b>@</b></code></td><td>(any string)</td><td><small>[OPTIONAL]</small></td></tr>
  * <tr><td></td><td>|</td><td><code><b>"</b></code>&nbsp;&lt;Unicode string without double-quotes&gt;&nbsp;<code><b>"</b></code></td><td>(a string)</td><td></td></tr>
- * <tr><td></td><td>|</td><td><code><b>(</b></code>&nbsp;<code><b>)</b></code></td><td>(the empty string)</td><td></td></tr>
  * <tr><td></td><td>|</td><td><code><b>(</b></code>&nbsp;<i>unionexp</i>&nbsp;<code><b>)</b></code></td><td>(precedence override)</td><td></td></tr>
  * <tr><td></td><td>|</td><td><code><b>&lt;</b></code>&nbsp;&lt;identifier&gt;&nbsp;<code><b>&gt;</b></code></td><td>(named automaton)</td><td><small>[OPTIONAL]</small></td></tr>
  * <tr><td></td><td>|</td><td><code><b>&lt;</b><i>n</i>-<i>m</i><b>&gt;</b></code></td><td>(numerical interval)</td><td><small>[OPTIONAL]</small></td></tr>
@@ -722,24 +723,37 @@ public class RegExp {
 	}
 
 	final RegExp parseUnionExp() throws IllegalArgumentException {
-		RegExp e = parseInterExp();
+		RegExp e;
+		if (peek("|"))
+			e = makeString("");
+		else
+			e = parseInterExp();
 		if (match('|'))
 			e = makeUnion(e, parseUnionExp());
 		return e;
 	}
 
 	final RegExp parseInterExp() throws IllegalArgumentException {
-		RegExp e = parseConcatExp();
+		RegExp e;
+		if (check(INTERSECTION) && peek("&"))
+			e = makeString("");
+		else
+			e = parseConcatExp();
 		if (check(INTERSECTION) && match('&'))
 			e = makeIntersection(e, parseInterExp());
 		return e;
 	}
 
 	final RegExp parseConcatExp() throws IllegalArgumentException {
-		RegExp e = parseRepeatExp();
-		if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&")))
-			e = makeConcatenation(e, parseConcatExp());
-		return e;
+		if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))) {
+			RegExp e = parseRepeatExp();
+			if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))) {
+				e = makeConcatenation(e, parseConcatExp());
+			}
+			return e;
+		} else {
+			return makeString("");
+		}
 	}
 
 	final RegExp parseRepeatExp() throws IllegalArgumentException {
@@ -833,8 +847,6 @@ public class RegExp {
 				throw new IllegalArgumentException("expected '\"' at position " + pos);
 			return makeString(b.substring(start, pos - 1));
 		} else if (match('(')) {
-			if (match(')'))
-				return makeString("");
 			RegExp e = parseUnionExp();
 			if (!match(')'))
 				throw new IllegalArgumentException("expected ')' at position " + pos);
