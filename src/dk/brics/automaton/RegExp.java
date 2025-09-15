@@ -510,7 +510,7 @@ public class RegExp {
 	}
 
 	private void appendChar(char c, StringBuilder b) {
-		if ("|&?*+{},![]^-.#@\"()<>\\".indexOf(c) != -1) {
+		if ("|&?*+{},![]^-.#@~\"()<>\\".indexOf(c) != -1) {
 			b.append("\\");
 		}
 		b.append(c);

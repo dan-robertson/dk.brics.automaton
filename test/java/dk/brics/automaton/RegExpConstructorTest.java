@@ -87,7 +87,7 @@ final class RegExpConstructorTest {
                 new TestCase("\"", ALWAYS_FAILS),
                 new TestCase("#", NEVER_FAILS, "#", "\\#"),
                 new TestCase("@", NEVER_FAILS, "@", "\\@"),
-                new TestCase("~", flags -> ((flags & RegExp.COMPLEMENT) == 0), "~"),
+                new TestCase("~", flags -> ((flags & RegExp.COMPLEMENT) == 0), "\\~"),
 
                 new TestCase("<a>",
                              flags -> ((flags & RegExp.AUTOMATON) != 0 || (flags & RegExp.INTERVAL) == 0),
@@ -103,7 +103,7 @@ final class RegExpConstructorTest {
                              "\\<"), // Unclosed angle bracket
 
                 new TestCase("~a", NEVER_FAILS, "~(a)", "\"~a\""),
-                new TestCase("~\\~", NEVER_FAILS, "~(~)", "\"~~\""),
+                new TestCase("~\\~", NEVER_FAILS, "~(\\~)", "\"~~\""),
 
                 new TestCase("[", ALWAYS_FAILS), // Unclosed character class
                 new TestCase("[]", ALWAYS_FAILS), // ‘empty’ (actually unclosed) character class
