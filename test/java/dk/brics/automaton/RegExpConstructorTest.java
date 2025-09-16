@@ -73,9 +73,9 @@ final class RegExpConstructorTest {
                 new TestCase("a&", NEVER_FAILS, "(a&\"\")", "\"a&\""),
                 new TestCase("&a", NEVER_FAILS, "(\"\"&a)", "\"&a\""),
 
-                new TestCase("*", NEVER_FAILS, "\\*"),
-                new TestCase("?", NEVER_FAILS, "\\?"),
-                new TestCase("+", NEVER_FAILS, "\\+"),
+                new TestCase("*", ALWAYS_FAILS),
+                new TestCase("?", ALWAYS_FAILS),
+                new TestCase("+", ALWAYS_FAILS),
                 new TestCase("|", NEVER_FAILS, "(\"\"|\"\")"),
                 new TestCase(">", NEVER_FAILS, "\\>"),
                 new TestCase("&", NEVER_FAILS, "(\"\"&\"\")", "\\&"),

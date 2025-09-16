@@ -73,8 +73,11 @@ import java.util.Set;
  * <tr><td><i>charclasses</i></td><td>::=</td><td><i>charclass</i>&nbsp;<i>charclasses</i></td><td></td><td></td></tr>
  * <tr><td></td><td>|</td><td><i>charclass</i></td><td></td><td></td></tr>
  *
- * <tr><td><i>charclass</i></td><td>::=</td><td><i>charexp</i>&nbsp;<code><b>-</b></code>&nbsp;<i>charexp</i></td><td>(character range, including end-points)</td><td></td></tr>
- * <tr><td></td><td>|</td><td><i>charexp</i></td><td></td><td></td></tr>
+ * <tr><td><i>charclass</i></td><td>::=</td><td><i>charclasschar</i>&nbsp;<code><b>-</b></code>&nbsp;<i>charclasschar</i></td><td>(character range, including end-points)</td><td></td></tr>
+ * <tr><td></td><td>|</td><td><i>charclasschar</i></td><td></td><td></td></tr>
+ *
+ * <tr><td><i>charclasschar</i></td><td>::=</td><td>{ &lt;Unicode character&gt; - <code><b>]</b></code> }</td><td>(a single unreserved character)</td><td></td></tr>
+ * <tr><td></td><td>|</td><td><code><b>\</b></code>&nbsp;&lt;Unicode character&gt;&nbsp;</td><td>(a single character)</td><td></td></tr>
  *
  * <tr><td><i>simpleexp</i></td><td>::=</td><td><i>charexp</i></td><td></td><td></td></tr>
  * <tr><td></td><td>|</td><td><code><b>.</b></code></td><td>(any single character)</td><td></td></tr>
@@ -85,8 +88,16 @@ import java.util.Set;
  * <tr><td></td><td>|</td><td><code><b>&lt;</b></code>&nbsp;&lt;identifier&gt;&nbsp;<code><b>&gt;</b></code></td><td>(named automaton)</td><td><small>[OPTIONAL]</small></td></tr>
  * <tr><td></td><td>|</td><td><code><b>&lt;</b><i>n</i>-<i>m</i><b>&gt;</b></code></td><td>(numerical interval)</td><td><small>[OPTIONAL]</small></td></tr>
  *
- * <tr><td><i>charexp</i></td><td>::=</td><td>&lt;Unicode character&gt;</td><td>(a single non-reserved character)</td><td></td></tr>
+ * <tr><td><i>charexp</i></td><td>::=</td><td>{ &lt;Unicode character&gt; - <i>reserved</i> }</td><td>(a single non-reserved character)</td><td></td></tr>
  * <tr><td></td><td>|</td><td><code><b>\</b></code>&nbsp;&lt;Unicode character&gt;&nbsp;</td><td>(a single character)</td><td></td></tr>
+ *
+ * <tr><td><i>reserved</i></td><td>::=</td><td><code><b>[</b></code> | <code><b>(</b></code> | <code><b>|</b></code> | <code><b>)</b></code>
+ *    | <code><b>?</b></code> | <code><b>*</b></code> | <code><b>+</b></code> | <code><b>"</b></code></td><td></td><td></td></tr>
+ * <tr><td></td><td>|</td><td><code><b>&amp;</b></code></td><td></td><td><small>[OPTIONAL]</small></td></tr>
+ * <tr><td></td><td>|</td><td><code><b>@</b></code></td><td></td><td><small>[OPTIONAL]</small></td></tr>
+ * <tr><td></td><td>|</td><td><code><b>~</b></code></td><td></td><td><small>[OPTIONAL]</small></td></tr>
+ * <tr><td></td><td>|</td><td><code><b>&lt;</b></code></td><td></td><td><small>[OPTIONAL]</small></td></tr>
+ *
  * </table>
  * <p>
  * The productions marked <small>[OPTIONAL]</small> are only allowed
@@ -822,14 +833,19 @@ public class RegExp {
 	}
 
 	final RegExp parseCharClass() throws IllegalArgumentException {
-		char c = parseCharExp();
+		char c = parseCharClassChar();
 		if (match('-'))
 			if (peek("]"))
                 return makeUnion(makeChar(c), makeChar('-'));
             else
-                return makeCharRange(c, parseCharExp());
+                return makeCharRange(c, parseCharClassChar());
 		else
 			return makeChar(c);
+	}
+
+	final char parseCharClassChar() throws IllegalArgumentException {
+		match('\\');
+		return next();
 	}
 
 	final RegExp parseSimpleExp() throws IllegalArgumentException {
@@ -893,6 +909,14 @@ public class RegExp {
 	}
 
 	final char parseCharExp() throws IllegalArgumentException {
+		if (peek("[()|*+?\"")
+			|| check(INTERSECTION) && peek("&")
+			|| check(ANYSTRING) && peek("@")
+			|| check(EMPTY) && peek("#")
+			|| check(COMPLEMENT) && peek("~")
+			|| (check(INTERVAL) || check(AUTOMATON)) && peek("<")) {
+			throw new IllegalArgumentException("unescaped reserved character at position " + (pos));
+		}
 		match('\\');
 		return next();
 	}
